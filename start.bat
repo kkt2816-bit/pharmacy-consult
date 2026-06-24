@@ -3,13 +3,20 @@ chcp 65001 >nul
 title 약국 상담 정리 프로그램
 cd /d "%~dp0"
 
-REM === 최신 버전 자동 업데이트 (git 있고, 이 폴더가 GitHub와 연결돼 있으면) ===
+REM === 자동 업데이트 (git 있으면) — 처음엔 자동 연결, 이후엔 매번 최신 코드 받기 ===
 REM   설정 파일(.json)은 .gitignore 처리돼서 절대 안 덮어써짐 → 연결 유지
 where git >nul 2>nul
-if not errorlevel 1 if exist ".git" (
-  echo  최신 버전 확인 중...
-  git fetch --quiet origin 2>nul
-  git reset --hard origin/main --quiet 2>nul
+if not errorlevel 1 (
+  if not exist ".git" (
+    echo  자동 업데이트 처음 연결 중...
+    git init -b main >nul 2>nul
+    git remote add origin https://github.com/kkt2816-bit/pharmacy-consult.git >nul 2>nul
+  )
+  if exist ".git" (
+    echo  최신 버전 확인 중...
+    git fetch --quiet origin 2>nul
+    git reset --hard origin/main --quiet 2>nul
+  )
 )
 
 where node >nul 2>nul
