@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: pharmacy-consult
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: ""
+    startCommand: node server.mjs
+    envVars:
+      - key: ANTHROPIC_KEY
+        sync: false
+      - key: OPENAI_KEY
+        sync: false
+      - key: GOOGLE_SA_EMAIL
+        sync: false
+      - key: GOOGLE_SA_PRIVATE_KEY
+        sync: false
+      - key: SHEET_ID
+        sync: false
+      - key: SHEET_TAB
+        value: 시트1
+      - key: APP_PASSWORD
+        sync: false

@@ -1,0 +1,8 @@
+{
+  "name": "pharmacy-consult",
+  "version": "1.0.0",
+  "private": true,
+  "description": "약국 상담 정리 — 전사문→구글시트+A4 안내문",
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.mjs" }
+}

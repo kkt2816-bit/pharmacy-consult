@@ -6,11 +6,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createSign, createHmac, timingSafeEqual } from "node:crypto";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8800;
-const HOST = "127.0.0.1";
+const HOSTED = Boolean(process.env.PORT); // 클라우드(호스팅)는 PORT를 줌 → 외부 접속 허용
+const HOST = process.env.HOST || (HOSTED ? "0.0.0.0" : "127.0.0.1");
+const APP_PASSWORD = String(process.env.APP_PASSWORD || "").trim(); // 있으면 비밀번호 잠금
 
 const aiKeyPath = path.join(rootDir, ".ai-key.json");
 const openaiKeyPath = path.join(rootDir, ".openai-key.json"); // OpenAI 백업 키(선택)
@@ -82,6 +84,8 @@ function daysBetween(a, b) { // b - a (달력 기준 일수)
 
 // ───────────────── AI (형 키: Claude 또는 OpenAI) ─────────────────
 async function getAiKey() {
+  const env = String(process.env.ANTHROPIC_KEY || "").trim();
+  if (env) return { key: env, provider: "anthropic", model: String(process.env.AI_MODEL || "").trim() };
   const raw = await readJsonFile(aiKeyPath, null);
   const key = String(raw?.apiKey || "").trim();
   if (!key) return null;
@@ -89,6 +93,8 @@ async function getAiKey() {
   return { key, provider, model: raw?.model || "" };
 }
 async function getOpenAiBackupKey() {
+  const env = String(process.env.OPENAI_KEY || "").trim();
+  if (env) return env;
   const raw = await readJsonFile(openaiKeyPath, null);
   const k = String(raw?.apiKey || "").trim();
   return k || null;
@@ -201,6 +207,9 @@ function sheetRowValues(analysis) {
 
 // ───────────────── 구글시트 OAuth ─────────────────
 async function getGoogleClient() {
+  const id = String(process.env.GOOGLE_CLIENT_ID || "").trim();
+  const sec = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+  if (id && sec) return { clientId: id, clientSecret: sec };
   const raw = await readJsonFile(googleClientPath, null);
   const clientId = String(raw?.clientId || "").trim();
   const clientSecret = String(raw?.clientSecret || "").trim();
@@ -208,10 +217,34 @@ async function getGoogleClient() {
 }
 function sheetsRedirectUri(req) { return `${baseUrlFrom(req)}/auth/sheets/callback`; }
 async function getSheetsTokens() {
+  const rt = String(process.env.GOOGLE_REFRESH_TOKEN || "").trim();
+  if (rt) return { refreshToken: rt, accessToken: "", expiresAt: 0 };
   const raw = await readJsonFile(sheetsTokenPath, null);
   return raw?.accessToken || raw?.refreshToken ? raw : null;
 }
+// 클라우드용: 구글 '서비스 계정'으로 시트 접근(로그인 불필요, 만료 없음)
+function getServiceAccount() {
+  const email = String(process.env.GOOGLE_SA_EMAIL || "").trim();
+  const key = String(process.env.GOOGLE_SA_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim();
+  return email && key.includes("PRIVATE KEY") ? { email, key } : null;
+}
+let saTokenCache = { token: "", exp: 0 };
+async function getServiceAccountToken(sa) {
+  if (saTokenCache.token && saTokenCache.exp > Date.now() + 60000) return saTokenCache.token;
+  const now = Math.floor(Date.now() / 1000);
+  const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const unsigned = `${enc({ alg: "RS256", typ: "JWT" })}.${enc({ iss: sa.email, scope: "https://www.googleapis.com/auth/spreadsheets", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 })}`;
+  const signer = createSign("RSA-SHA256"); signer.update(unsigned); signer.end();
+  const jwt = `${unsigned}.${signer.sign(sa.key).toString("base64url")}`;
+  const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error_description || d.error || "서비스 계정 인증 실패"), { status: 401 });
+  saTokenCache = { token: String(d.access_token || "").trim(), exp: Date.now() + (Number(d.expires_in) || 3600) * 1000 };
+  return saTokenCache.token;
+}
 async function ensureSheetsAccess() {
+  const sa = getServiceAccount();
+  if (sa) return { accessToken: await getServiceAccountToken(sa) }; // 클라우드 우선
   const client = await getGoogleClient();
   if (!client) throw Object.assign(new Error("구글 클라이언트 정보가 없습니다(설정)."), { status: 400 });
   let tokens = await getSheetsTokens();
@@ -225,7 +258,7 @@ async function ensureSheetsAccess() {
     const p = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(p.error_description || "토큰 갱신 실패 — 다시 로그인."), { status: 401 });
     tokens = { accessToken: String(p.access_token || "").trim(), refreshToken: tokens.refreshToken, expiresAt: Date.now() + (Number(p.expires_in) || 0) * 1000 };
-    await writeJsonFile(sheetsTokenPath, tokens);
+    try { await writeJsonFile(sheetsTokenPath, tokens); } catch {}
   }
   return tokens;
 }
@@ -304,6 +337,8 @@ async function readSheetRows() {
 
 // ───────────────── 설정 ─────────────────
 async function getConsultConfig() {
+  const envId = String(process.env.SHEET_ID || "").trim();
+  if (envId) return { sheetId: envId, sheetTab: String(process.env.SHEET_TAB || "시트1").trim() || "시트1" };
   const raw = await readJsonFile(consultConfigPath, {});
   return { sheetId: String(raw.sheetId || "").trim(), sheetTab: String(raw.sheetTab || "시트1").trim() || "시트1" };
 }
@@ -428,10 +463,47 @@ async function serveStatic(req, res) {
   } catch { res.writeHead(404); res.end("Not found"); }
 }
 
+// ───────────────── 비밀번호 잠금 (APP_PASSWORD 있을 때만) ─────────────────
+function readBody(req) { return new Promise((resolve) => { let d = ""; req.on("data", (c) => { d += c; if (d.length > 1e6) d = d.slice(0, 1e6); }); req.on("end", () => resolve(d)); }); }
+function pwCookie() { return createHmac("sha256", APP_PASSWORD).update("pharmacy-ok").digest("hex"); }
+function isAuthed(req) {
+  if (!APP_PASSWORD) return true;
+  const m = (req.headers.cookie || "").match(/(?:^|;\s*)pw=([a-f0-9]+)/);
+  if (!m) return false;
+  try { const a = Buffer.from(m[1], "hex"); const b = Buffer.from(pwCookie(), "hex"); return a.length === b.length && timingSafeEqual(a, b); } catch { return false; }
+}
+function loginPage(msg) {
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>약국 상담</title></head>
+<body style="font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;background:#f4f7f5;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">
+<form method="POST" action="/api/login" style="background:#fff;padding:30px 26px;border-radius:16px;box-shadow:0 6px 22px rgba(20,60,48,.1);width:300px;text-align:center">
+<div style="font-size:30px">🩺</div><h2 style="margin:6px 0 2px;color:#164c40">약국 상담</h2>
+<p style="color:#6b7b74;font-size:14px;margin:0 0 16px">비밀번호를 입력하세요</p>
+<input name="password" type="password" autofocus style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #e2eae6;border-radius:10px;font-size:15px" placeholder="비밀번호">
+${msg ? `<p style="color:#b5462f;font-size:13px;margin:10px 0 0">${msg}</p>` : ""}
+<button style="width:100%;margin-top:12px;padding:12px;background:#1f6f5b;color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer">들어가기</button>
+</form></body></html>`;
+}
+async function handleLogin(req, res) {
+  const pw = new URLSearchParams(await readBody(req)).get("password") || "";
+  if (APP_PASSWORD && pw === APP_PASSWORD) {
+    const secure = HOSTED ? " Secure;" : "";
+    res.writeHead(302, { "Set-Cookie": `pw=${pwCookie()}; HttpOnly;${secure} Path=/; Max-Age=2592000; SameSite=Lax`, Location: "/" });
+    return res.end();
+  }
+  res.writeHead(401, { "content-type": "text/html; charset=utf-8" });
+  res.end(loginPage("비밀번호가 틀렸어요."));
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, baseUrlFrom(req));
   const m = req.method;
   try {
+    // 비밀번호 잠금: 로그인 안 됐으면 로그인 화면만
+    if (APP_PASSWORD && !isAuthed(req)) {
+      if (m === "POST" && url.pathname === "/api/login") return handleLogin(req, res);
+      if (url.pathname.startsWith("/api/")) return sendJson(res, 401, { error: "로그인이 필요합니다." });
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); return res.end(loginPage(""));
+    }
     if (m === "GET" && url.pathname === "/api/status") return handleStatus(req, res);
     if (m === "POST" && url.pathname === "/api/config") return handleSaveConfig(req, res);
     if (m === "POST" && url.pathname === "/api/analyze") return handleAnalyze(req, res);
@@ -446,7 +518,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  const url = `http://${HOST}:${PORT}`;
+  if (HOSTED) { console.log(`약국 상담 프로그램(웹) 실행 중 — 포트 ${PORT}${APP_PASSWORD ? " · 비밀번호 잠금 ON" : ""}`); return; }
+  const url = `http://127.0.0.1:${PORT}`;
   console.log(`\n  약국 상담 정리 프로그램 실행 중:  ${url}\n  (이 창은 닫지 마세요. 종료하려면 Ctrl+C)\n`);
   // 브라우저 자동 열기(윈도우/맥) — OPEN_BROWSER=0 이면 건너뜀
   if (process.env.OPEN_BROWSER !== "0") {
