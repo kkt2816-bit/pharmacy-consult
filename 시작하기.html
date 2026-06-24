@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>약국 상담 정리 — 시작하기</title>
+<style>
+  body{margin:0;background:#f4f7f5;color:#1a2420;font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;line-height:1.65}
+  .wrap{max-width:720px;margin:0 auto;padding:30px 22px 60px}
+  .hero{background:#fff;border:1px solid #e2eae6;border-radius:16px;padding:26px;box-shadow:0 6px 22px rgba(20,60,48,.08);text-align:center}
+  .eyebrow{font-size:11px;letter-spacing:2px;color:#2a8c72;font-weight:700}
+  h1{margin:6px 0 4px;font-size:24px}
+  .sub{color:#6b7b74;font-size:14px;margin:0}
+  h2{font-size:17px;margin:30px 0 10px}
+  .step{background:#fff;border:1px solid #e2eae6;border-radius:14px;padding:18px 20px;margin:14px 0;box-shadow:0 4px 14px rgba(20,60,48,.05)}
+  .step .no{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:#1f6f5b;color:#fff;font-weight:700;font-size:14px;margin-right:8px;vertical-align:middle}
+  .step b{font-size:16px}
+  .step p{margin:8px 0 0;font-size:14px}
+  .step ul{margin:8px 0 0;padding-left:20px;font-size:14px}
+  a.btnlink{display:inline-block;margin-top:10px;background:#1f6f5b;color:#fff;text-decoration:none;padding:9px 16px;border-radius:10px;font-weight:600;font-size:14px}
+  code{background:#eef4f1;padding:2px 7px;border-radius:6px;font-size:13px}
+  .file{background:#fff7ea;border:1px solid #f0e0c2;border-radius:8px;padding:3px 9px;font-weight:600}
+  .note{background:#eaf4f0;border:1px solid #cfe7dd;border-radius:12px;padding:14px 18px;font-size:13.5px;color:#164c40;margin-top:24px}
+  .tip{color:#6b7b74;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">PHARMACY CONSULT</div>
+    <h1>🩺 약국 상담 정리 — 시작하기</h1>
+    <p class="sub">아래 순서대로 딱 한 번만 따라 하면 됩니다. (5분이면 끝나요)</p>
+  </div>
+
+  <h2>설치 (처음 한 번만)</h2>
+
+  <div class="step">
+    <b><span class="no">1</span>이 폴더를 압축 풀기</b>
+    <p>받은 <span class="file">약국 상담 프로그램.zip</span> 파일을 마우스 오른쪽 클릭 →
+       <b>'압축 풀기 / 전체 압축 풀기'</b>를 누르세요.</p>
+    <p class="tip">바탕화면이나 '문서' 폴더 등 찾기 쉬운 곳에 풀면 좋아요.</p>
+  </div>
+
+  <div class="step">
+    <b><span class="no">2</span>Node.js 설치</b>
+    <p>프로그램을 돌리는 데 꼭 필요한 무료 프로그램이에요. 아래 버튼을 눌러
+       <b>'LTS'</b> 버전을 받고, 설치 중엔 계속 <b>'다음(Next)'</b>만 누르면 됩니다.</p>
+    <a class="btnlink" href="https://nodejs.org/ko" target="_blank">▶ Node.js 다운로드 (nodejs.org)</a>
+    <p class="tip">※ 이미 설치돼 있으면 이 단계는 건너뛰어도 됩니다.</p>
+  </div>
+
+  <div class="step">
+    <b><span class="no">3</span>프로그램 켜기</b>
+    <p>압축 푼 폴더 안의 <span class="file">start.bat</span> 파일을 <b>더블클릭</b>하세요.</p>
+    <ul>
+      <li>검은 창이 뜨고, 잠시 후 브라우저가 자동으로 열립니다.</li>
+      <li>안 열리면 브라우저 주소창에 <code>http://127.0.0.1:8800</code> 직접 입력.</li>
+      <li>⚠️ <b>검은 창은 프로그램이 켜져 있는 동안 닫지 마세요.</b> (끌 땐 검은 창을 닫으면 종료)</li>
+    </ul>
+    <p class="tip">※ '알 수 없는 게시자' 같은 보안 경고가 뜨면 '추가 정보 → 실행'을 누르면 됩니다.</p>
+  </div>
+
+  <h2>세팅 (프로그램 화면 안에서)</h2>
+
+  <div class="step">
+    <b><span class="no">4</span>화면 안 '🚀 처음 설정 가이드' 따라 하기</b>
+    <p>프로그램이 열리면 오른쪽에 <b>설정 가이드 4단계</b>가 보여요. 화면 설명대로:</p>
+    <ul>
+      <li><b>1단계</b> — 남편(형) AI 키 한 번 붙여넣기</li>
+      <li><b>2단계</b> — 구글 클라우드에 주소 1줄 추가 + 클라이언트 ID/시크릿 입력
+          <span class="tip">(화면의 '복사' 버튼으로 주소를 그대로 붙여넣으면 됨)</span></li>
+      <li><b>3단계</b> — 저장할 구글시트 주소 입력 → <b>'1~3단계 저장'</b></li>
+      <li><b>4단계</b> — <b>'구글시트 로그인'</b> → 와이프 구글 계정으로 로그인</li>
+    </ul>
+    <p>끝난 단계는 <b>✅</b> 로 바뀌고, 4개가 다 ✅ 되면 준비 끝!</p>
+  </div>
+
+  <div class="note">
+    <b>매일 쓰는 법</b><br/>
+    ① <span class="file">start.bat</span> 더블클릭 → ② 왼쪽에 상담 전사문 붙여넣기 → <b>🧠 AI 정리</b> →
+    ③ 내용 확인/수정 → <b>💾 구글시트 저장</b> → ④ <b>📄 안내문 만들기</b> → 수정 후 <b>📄 PDF 생성</b>.
+  </div>
+
+  <p class="tip" style="margin-top:22px">
+    문제가 생기면: 검은 창을 실수로 닫았다면 그냥 <span class="file">start.bat</span>를 다시 더블클릭하면 됩니다.
+    자세한 내용은 같은 폴더의 <span class="file">README.txt</span>를 참고하세요.
+  </p>
+</div>
+</body>
+</html>

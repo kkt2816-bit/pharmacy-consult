@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>약국 상담 정리</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">PHARMACY CONSULT</div>
+      <h1>🩺 약국 상담 정리</h1>
+    </div>
+    <span class="badge" id="statusBadge">상태 확인 중…</span>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" id="tabConsult" type="button">📝 상담 정리</button>
+    <button class="tab" id="tabFollowup" type="button">💬 안부문자</button>
+  </nav>
+
+  <main class="grid" id="viewConsult">
+    <!-- 왼쪽: 입력 -->
+    <section class="card">
+      <div class="card-top">
+        <div><h2>상담 정리</h2><p class="helper">상담 녹음 전사문을 붙여넣고 'AI 정리'를 누르세요.</p></div>
+        <button class="btn primary" id="analyzeBtn" type="button">🧠 AI 정리</button>
+      </div>
+      <label class="block"><span>상담 녹음 전사문</span>
+        <textarea id="transcript" rows="10" placeholder="통화 녹음 전사문을 그대로 붙여넣으세요."></textarea>
+      </label>
+      <label class="block"><span>약사 메모 (선택)</span>
+        <textarea id="memo" rows="2" placeholder="예: 매출 13만원 / 다음 상담일 8월 20일 / 헴철 2개월분 → 자기 전 1포"></textarea>
+      </label>
+      <p class="helper tiny">💡 안부문자 연락 알림은 '상담일 기준 약 3주 뒤(약 떨어지기 전)'에 자동으로 떠요. 상담일만 정확하면 됩니다. (안부 문자 내용은 저장할 때 시트 맨 끝 칸에 자동 작성)</p>
+      <p class="status" id="analyzeStatus"></p>
+
+      <div class="preview" id="preview" hidden>
+        <div class="fields">
+          <label>고객명 <input id="fName" type="text" /></label>
+          <label>전화번호 <input id="fPhone" type="text" /></label>
+          <label>상담일 <input id="fDate" type="date" /></label>
+          <label>차수 <input id="fStage" type="text" /></label>
+          <label>매출액 <input id="fRevenue" type="text" /></label>
+        </div>
+        <details><summary>상세 기록 미리보기</summary>
+          <pre id="detailPreview" class="detail"></pre>
+        </details>
+        <div class="actions">
+          <button class="btn primary" id="saveBtn" type="button">💾 구글시트 저장</button>
+          <button class="btn" id="a4Btn" type="button">📄 안내문 만들기</button>
+        </div>
+        <p class="status" id="saveStatus"></p>
+      </div>
+    </section>
+
+    <!-- 오른쪽: 안내문 + 설정 -->
+    <section class="col">
+      <div class="card" id="a4Card" hidden>
+        <div class="card-top">
+          <div><h2>📄 안내문 — 최종 확인·수정</h2><p class="helper">내용을 직접 고친 뒤 PDF로 만드세요. (# 제목 / ## 소제목 / - 항목 / **굵게**)</p></div>
+          <button class="btn primary" id="pdfBtn" type="button">📄 PDF 생성</button>
+        </div>
+        <textarea id="a4Edit" rows="20"></textarea>
+      </div>
+
+      <!-- 사용법: 설정이 다 끝나면 표시 -->
+      <section class="card usage" id="usageGuide" hidden>
+        <div class="card-top">
+          <div><h2>📖 사용법</h2><p class="helper">아래 순서대로만 하면 됩니다. 모르면 언제든 여기를 보세요.</p></div>
+          <span class="chip ok">준비 완료</span>
+        </div>
+        <div class="usage-block">
+          <div class="usage-title">📝 상담 정리 (왼쪽)</div>
+          <ol class="usage-steps">
+            <li>상담 녹음 <b>전사문</b>을 왼쪽 칸에 붙여넣어요.</li>
+            <li><b>🧠 AI 정리</b> → 고객명·전화·다음 상담일이 자동으로 채워져요. (틀리면 직접 수정)</li>
+            <li><b>💾 구글시트 저장</b> → 시트에 한 줄 추가 + 색이 자동으로 입혀져요.</li>
+            <li><b>📄 안내문 만들기</b> → 오른쪽에서 내용 고친 뒤 <b>PDF 생성</b>.</li>
+          </ol>
+        </div>
+        <div class="usage-block">
+          <div class="usage-title">💬 안부문자 (위쪽 탭)</div>
+          <ol class="usage-steps">
+            <li>위 <b>💬 안부문자</b> 탭을 눌러요.</li>
+            <li>상담일 기준 약 3주 뒤(<b>오늘 / 1일 뒤 / 2일 뒤</b>) 연락할 분이 <b>이름·번호</b>만 떠요.</li>
+            <li>문자 내용은 상담 저장할 때 <b>구글시트 맨 끝 칸(안부 상담문자)</b>에 미리 적혀 있어요.</li>
+            <li>연락할 분을 보고, 시트에서 그 분 문자를 복사해 보내면 돼요.</li>
+          </ol>
+        </div>
+        <p class="helper tiny">⚙️ 키·계정을 다시 바꾸려면 아래 '설정 열기'를 누르세요.
+          <button class="linklike" id="openSettingsBtn" type="button">설정 열기</button>
+        </p>
+      </section>
+
+      <details class="card setup" id="settings">
+        <summary class="settings-summary">
+          <h2>🚀 처음 설정 가이드</h2>
+          <span class="chip" id="settingsChip">0 / 4</span>
+        </summary>
+        <p class="helper">아래 4단계만 끝내면 바로 쓸 수 있어요. 끝난 단계는 ✅ 로 바뀝니다. (한 번만 하면 됩니다)</p>
+
+        <!-- STEP 1 -->
+        <div class="step" id="step1">
+          <div class="step-head"><span class="step-no">1</span><b>AI 키 입력</b><span class="step-tick">✅</span></div>
+          <p class="helper tiny">남편(형)의 API 키를 한 번만 붙여넣으세요. (와이프는 안 해도 됨)</p>
+          <input id="aiKey" type="password" placeholder="sk-ant-... 붙여넣기" autocomplete="off" />
+          <p class="helper tiny" style="margin-top:8px">🔁 OpenAI 백업 키 (선택) — Claude(Anthropic)가 과부하/장애일 때 자동으로 대신 씀(gpt-5.5). 넣어두면 AI가 멈추는 일이 거의 없어요.</p>
+          <input id="openaiKey" type="password" placeholder="sk-... (OpenAI 키, 선택)" autocomplete="off" />
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step" id="step2">
+          <div class="step-head"><span class="step-no">2</span><b>구글 클라우드에 주소 1줄 추가</b><span class="step-tick">✅</span></div>
+          <p class="helper tiny">
+            ① <a href="https://console.cloud.google.com/apis/credentials" target="_blank">구글 클라우드 콘솔</a> 접속 (남편 계정)<br/>
+            ② 'API 및 서비스 → 사용자 인증 정보' → 쓰던 <b>OAuth 2.0 클라이언트</b> 클릭<br/>
+            ③ '승인된 리디렉션 URI'에 아래 주소를 <b>그대로</b> 추가하고 저장:
+          </p>
+          <div class="copyrow">
+            <code id="redirectUri">—</code>
+            <button class="btn tiny-btn" id="copyUriBtn" type="button">복사</button>
+          </div>
+          <p class="helper tiny">④ 그 화면의 <b>클라이언트 ID / 시크릿</b>을 아래에 붙여넣으세요:</p>
+          <input id="clientId" type="text" placeholder="클라이언트 ID  (...apps.googleusercontent.com)" autocomplete="off" />
+          <input id="clientSecret" type="password" placeholder="클라이언트 시크릿  (GOCSPX-...)" autocomplete="off" style="margin-top:8px" />
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step" id="step3">
+          <div class="step-head"><span class="step-no">3</span><b>저장할 구글시트 연결</b><span class="step-tick">✅</span></div>
+          <p class="helper tiny">와이프 구글 계정으로 빈 구글시트를 하나 만들고, 그 주소(URL)를 붙여넣으세요. (머리글은 자동으로 채워짐)</p>
+          <input id="sheetUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/..." />
+          <input id="sheetTab" type="text" placeholder="시트 탭 이름 (보통 '시트1')" style="margin-top:8px" />
+          <button class="btn primary" id="saveCfgBtn" type="button" style="margin-top:10px">1~3단계 저장</button>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="step" id="step4">
+          <div class="step-head"><span class="step-no">4</span><b>구글 로그인 (와이프 계정)</b><span class="step-tick">✅</span></div>
+          <p class="helper tiny">버튼을 누르면 구글 로그인 창이 떠요. <b>와이프 구글 계정</b>으로 로그인하면 그 계정 시트에 저장됩니다.</p>
+          <button class="btn" id="loginBtn" type="button">🔑 구글시트 로그인</button>
+        </div>
+
+        <p class="status" id="cfgStatus"></p>
+        <p class="helper tiny" id="setupDone" hidden>🎉 설정 완료! 이제 왼쪽에서 상담 전사문을 붙여넣고 쓰면 됩니다.</p>
+      </details>
+    </section>
+  </main>
+
+  <main class="followup" id="viewFollowup" hidden>
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <h2>💬 안부·상담 문자</h2>
+          <p class="helper"><b>상담일 기준 약 3주 뒤(약 떨어지기 전)</b>에 연락할 분을 오늘·1일 뒤·2일 뒤로 보여줘요(이름·번호만). 보낼 문자 내용은 상담 저장 때 <b>구글시트 맨 끝 칸</b>에 미리 적어둡니다.</p>
+        </div>
+        <button class="btn" id="refreshFollowBtn" type="button">🔄 새로고침</button>
+      </div>
+      <p class="status" id="followStatus">불러오는 중…</p>
+    </div>
+
+    <div id="bucketToday" class="bucket"></div>
+    <div id="bucketD2" class="bucket"></div>
+    <div id="bucketD3" class="bucket"></div>
+    <div id="bucketOverdue" class="bucket"></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# 비밀·설정 파일 — 각 컴퓨터에만 두고 절대 GitHub에 올리지 않음
+.ai-key.json
+.openai-key.json
+.google-client.json
+.sheets-token.json
+.consult-config.json
+.consult-log*.json
+
+# OS / 에디터 / 런타임 부산물
+.DS_Store
+Thumbs.db
+.claude/
+node_modules/
+*.log
