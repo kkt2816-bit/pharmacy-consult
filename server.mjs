@@ -454,3 +454,5 @@ server.listen(PORT, HOST, () => {
     try { spawn(opener[0], opener[1], { stdio: "ignore", detached: true }).unref(); } catch {}
   }
 });
+
+// 자동업데이트 테스트 마커 104413
