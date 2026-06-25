@@ -441,11 +441,15 @@ async function handleFollowups(req, res) {
   } catch (e) { sendJson(res, e.status || 500, { error: describeError(e, "안부문자 목록을 불러오지 못했습니다."), needsReauth: e.status === 401 }); }
 }
 async function handleStatus(req, res) {
-  const ai = await getAiKey(); const backup = await getOpenAiBackupKey(); const client = await getGoogleClient(); const tokens = await getSheetsTokens(); const cfg = await getConsultConfig();
+  const ai = await getAiKey(); const backup = await getOpenAiBackupKey(); const sa = getServiceAccount();
+  const client = await getGoogleClient(); const tokens = await getSheetsTokens(); const cfg = await getConsultConfig();
+  // 서비스계정(클라우드)이 있으면 구글 연결은 완료된 것으로 본다
   sendJson(res, 200, {
     hasAiKey: Boolean(ai), aiProvider: ai?.provider || "", hasOpenAiBackup: Boolean(backup),
-    hasGoogleClient: Boolean(client), sheetsAuthorized: Boolean(tokens?.refreshToken || tokens?.accessToken),
+    hasGoogleClient: Boolean(sa) || Boolean(client),
+    sheetsAuthorized: Boolean(sa) || Boolean(tokens?.refreshToken || tokens?.accessToken),
     sheetId: cfg.sheetId, sheetTab: cfg.sheetTab, redirectUri: sheetsRedirectUri(req),
+    cloud: Boolean(sa) || HOSTED,
   });
 }
 async function handleSaveConfig(req, res) {
