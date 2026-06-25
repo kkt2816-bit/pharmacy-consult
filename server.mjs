@@ -189,7 +189,7 @@ ${memo ? `\n[약사 메모]\n${memo}` : ""}
   "customer": {"name": "고객명", "phone": "전화(없으면 빈값)", "consultDate": "YYYY-MM-DD", "stage": "1차|2차...(모르면 1차)", "revenue": "매출(언급시 숫자만)"},
   "sheetRow": {${SHEET_COLUMNS.filter((c) => c !== "상담 상세 기록" && c !== "안부 상담문자").map((c) => `"${c}": "..."`).join(", ")}},
   "detailRecord": "상세 상담 기록지(마크다운). 다음 소제목 순서로: ## 고객 기본 정보 / ## 현재 가장 불편한 증상 / ## 약력·병력·복용 이력 / ## 상담 핵심 요약 / ## 전문가 분석·문제 원인 / ## 이번 상담 추천 제품(제품명—기능/근거, 복용법, 기대 타임라인) / ## 다음 케어 계획. 각 항목은 - 불릿으로.",
-  "followupSms": "상담 약 3주 뒤(약이 떨어질 즈음) 보낼 '안부 겸 재상담 권유' 문자 본문. 그 분의 증상·복용 제품 중 1~2개를 구체적으로 언급해 기억하는 느낌을 준다. 다정한 존댓말, 일반 문자 길이로 짧게(3~5줄, 한 줄도 짧게), 판매 강요·과장·치료 단정 금지, 기록에 없는 사실은 지어내지 않는다. 첫 줄은 'OOO님, 안녕하세요. 낭만약사입니다' 형태(고객명 넣기), 이모지는 맨 끝에 1개 정도."
+  "followupSms": "상담 약 3주 뒤(약이 떨어질 즈음) 보낼 '안부 겸 재상담 권유' 문자 본문. 그 분의 증상·복용 제품 중 1~2개를 구체적으로 언급해 기억하는 느낌을 준다. 다정한 존댓말, 일반 문자 길이로 짧게(3~5줄, 한 줄도 짧게), 판매 강요·과장·치료 단정 금지, 기록에 없는 사실은 지어내지 않는다. 첫 줄은 'OOO님, 안녕하세요. 진약국 김주희 약사입니다' 형태(고객명 넣기), 이모지는 맨 끝에 1개 정도."
 }
 sheetRow 규칙:
 - "상담일"=consultDate, "한달뒤 상담일"=상담일+1개월.
@@ -305,7 +305,7 @@ async function handleSheetsAuthCallback(req, res) {
 }
 async function appendSheetRow(accessToken, sheetId, sheetTab, rowValues) {
   const range = encodeURIComponent(`${sheetTab}!A1`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
   const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "content-type": "application/json" }, body: JSON.stringify({ values: [rowValues] }), signal: AbortSignal.timeout(25000) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(d.error?.message || "구글시트 입력 실패"), { status: r.status });
@@ -385,7 +385,7 @@ async function handleSave(req, res) {
 }
 function a4Prompt(analysis) {
   return `
-역할: 낭만약사. 아래 상담 정리를 바탕으로 고객 전달용 안내문을 작성한다.
+역할: 진약국 김주희 약사. 아래 상담 정리를 바탕으로 고객 전달용 안내문을 작성한다.
 톤: 쉬운 설명체, 다정한 존댓말, 관리 안내문. 판매·과장·단정적 치료 표현 금지. 전사에 없는 사실 단정 금지. 기존 약 임의 중단 금지.
 ❌ 금지: 상단·어디에도 날짜·시간 적지 마라. '이 제품은 건강기능식품으로 질병의 치료를 목적으로 하는 약이 아닙니다' 같은 면책·디스클레이머 절대 금지(신뢰도·효과 저하). "## 8. 안심 안내"는 면책 아닌 따뜻한 격려로.
 ❌ 정보가 비어 있는 항목은 '확인 필요 / 확인 부탁 / 미확인 / [확인] / 확인해 주세요' 같은 안내를 쓰지 말고, 그 줄·항목을 조용히 생략하고 있는 내용만으로 자연스럽게 작성한다.
@@ -397,7 +397,7 @@ ${JSON.stringify(analysis, null, 2)}
 구조(이 순서, 마크다운):
 # 📄 ${analysis?.customer?.name || "고객"}님 맞춤 [주제] 관리 안내문
 부제 한 줄
-제공: 낭만약사
+제공: 진약국 김주희 약사
 짧은 인사 및 도입(2~3문장)
 ## 1. 이번 프로그램의 목표
 ## 2. 현재 상태 요약
