@@ -346,6 +346,68 @@ async function readSheetRows() {
   });
 }
 
+// ───────────────── 구글시트 셀 색칠 (저장 시 자동) ─────────────────
+// 매출X=연회색 / 구매=연초록 / 재방문(이름+전화 모두 동일) 또 구매 시 이전 구매상담=연노랑·최근=연초록
+const COLOR_RGB = {
+  green: { red: 0.871, green: 0.945, blue: 0.855 },  // 연초록
+  yellow: { red: 1.0, green: 0.961, blue: 0.804 },   // 연노랑
+  gray: { red: 0.937, green: 0.937, blue: 0.937 },   // 연회색
+};
+function revenueVal(s) { const n = parseInt(String(s || "").replace(/[^\d]/g, ""), 10); return isNaN(n) ? 0 : n; }
+function classifyRows(rows) {
+  const groups = new Map();
+  rows.forEach((r, i) => {
+    const name = (r["고객명"] || "").trim();
+    const phone = (r["전화번호"] || "").replace(/[^\d]/g, "");
+    const key = (name || phone) ? `${name}|${phone}` : `_row${i}`; // 이름+전화 둘 다 같아야 같은 고객
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  });
+  const colorByRow = new Map();
+  for (const arr of groups.values()) {
+    const ordered = arr.map((r) => ({ r, d: parseLooseDate(r["상담일"]) })).sort((a, b) => (a.d && b.d ? a.d - b.d : 0));
+    const purchases = ordered.filter((x) => revenueVal(x.r["매출액"]) > 0);
+    const latestPurchase = purchases.length ? purchases[purchases.length - 1].r : null;
+    for (const { r } of ordered) {
+      let color;
+      if (revenueVal(r["매출액"]) <= 0) color = "gray";        // 매출 없음
+      else if (r === latestPurchase) color = "green";         // 최근 구매
+      else color = "yellow";                                  // 이전 구매(재방문 전 상담)
+      colorByRow.set(r._row, color);
+    }
+  }
+  return colorByRow;
+}
+async function getSheetGid(accessToken, sheetId, tabName) {
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties(sheetId,title)`, { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(20000) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error?.message || "시트 정보 읽기 실패"), { status: r.status });
+  const sh = (d.sheets || []).find((s) => s.properties?.title === tabName) || d.sheets?.[0];
+  return sh?.properties?.sheetId ?? 0;
+}
+async function applyRowColors(accessToken, sheetId, gid, items) {
+  if (!items.length) return;
+  const requests = items.map((it) => ({
+    repeatCell: {
+      range: { sheetId: gid, startRowIndex: it.row - 1, endRowIndex: it.row, startColumnIndex: 0, endColumnIndex: SHEET_COLUMNS.length },
+      cell: { userEnteredFormat: { backgroundColor: COLOR_RGB[it.color] || COLOR_RGB.gray } },
+      fields: "userEnteredFormat.backgroundColor",
+    },
+  }));
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "content-type": "application/json" }, body: JSON.stringify({ requests }), signal: AbortSignal.timeout(25000) });
+  if (!r.ok) { const d = await r.json().catch(() => ({})); throw Object.assign(new Error(d.error?.message || "시트 색칠 실패"), { status: r.status }); }
+}
+async function recolorAll() {
+  const cfg = await getConsultConfig();
+  if (!cfg.sheetId) return;
+  const tokens = await ensureSheetsAccess();
+  const gid = await getSheetGid(tokens.accessToken, cfg.sheetId, cfg.sheetTab);
+  const rows = await readSheetRows();
+  const colorByRow = classifyRows(rows);
+  const items = rows.map((row) => ({ row: row._row, color: colorByRow.get(row._row) || "gray" }));
+  await applyRowColors(tokens.accessToken, cfg.sheetId, gid, items);
+}
+
 // ───────────────── 설정 ─────────────────
 async function getConsultConfig() {
   const envId = String(process.env.SHEET_ID || "").trim();
@@ -380,6 +442,8 @@ async function handleSave(req, res) {
     }
     await ensureHeaderRow(tokens.accessToken, cfg.sheetId, cfg.sheetTab);
     await appendSheetRow(tokens.accessToken, cfg.sheetId, cfg.sheetTab, sheetRowValues(analysis));
+    // 저장 후 전체 셀 색 자동 정리(매출X 회색 / 구매 초록 / 재방문 이전구매 노랑)
+    try { await recolorAll(); } catch (e) { console.log("[색칠] 건너뜀:", e.message); }
     sendJson(res, 200, { ok: true });
   } catch (e) { sendJson(res, e.status || 500, { error: describeError(e, "구글시트 저장에 실패했습니다."), needsReauth: e.status === 401 }); }
 }
