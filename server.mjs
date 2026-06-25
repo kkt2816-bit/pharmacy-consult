@@ -224,8 +224,19 @@ async function getSheetsTokens() {
 }
 // 클라우드용: 구글 '서비스 계정'으로 시트 접근(로그인 불필요, 만료 없음)
 function getServiceAccount() {
+  // ① JSON 통째를 base64로(가장 안전) ② JSON 통째 ③ 이메일+개인키 따로
+  const fromJson = (raw) => {
+    try { const o = JSON.parse(raw); if (o.client_email && o.private_key) return { email: String(o.client_email).trim(), key: String(o.private_key) }; } catch {}
+    return null;
+  };
+  const b64 = String(process.env.GOOGLE_SA_JSON_B64 || "").trim();
+  if (b64) { const r = fromJson(Buffer.from(b64, "base64").toString("utf8")); if (r) return r; }
+  const json = String(process.env.GOOGLE_SA_JSON || "").trim();
+  if (json) { const r = fromJson(json); if (r) return r; }
   const email = String(process.env.GOOGLE_SA_EMAIL || "").trim();
-  const key = String(process.env.GOOGLE_SA_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim();
+  let key = String(process.env.GOOGLE_SA_PRIVATE_KEY || "").trim();
+  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) key = key.slice(1, -1);
+  key = key.replace(/\\r/g, "").replace(/\\n/g, "\n").trim();
   return email && key.includes("PRIVATE KEY") ? { email, key } : null;
 }
 let saTokenCache = { token: "", exp: 0 };
